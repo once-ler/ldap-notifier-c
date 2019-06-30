@@ -1,19 +1,19 @@
 #include <getopt.h>
 #include "ldap-notifier.h"
 
-const char *host, *base, *filter, *dn, *password;
-int port, protocol = LDAP_VERSION3, scope = LDAP_SCOPE_SUBTREE;
+const char *host = "127.0.0.1", *base, *filter = "ObjectClass=*", *dn, *password;
+int port = 389, protocol = LDAP_VERSION3, scope = LDAP_SCOPE_SUBTREE;
 
 void printHelp() {
   printf(
-    "--host <t>:          Host name (localhost)\n"
-    "--port <p>:          Port (389)\n"
-    "--base <b>:          Base (dc=github,dc=com)\n"
-    "--filter <f>:        Filter (objectClass=* or ObjectClass=* for Microsoft)\n"
-    "--protocol <l>:      Protocol (LDAP_VERSION3)\n" 
-    "--scope <s>:         Scope (LDAP_SCOPE_SUBTREE)\n"
-    "--dn <d>:            Distinguished Name (joeschmoe@github.com)\n"
-    "--password <a>:      Password\n"
+    "--host <t>:          Host name (Default: 127.0.0.1)\n"
+    "--port <p>:          Port (Default: 389)\n"
+    "--base <b>:          Base (No default.  Example: dc=github,dc=com)\n"
+    "--filter <f>:        Filter (Example: objectClass=* or ObjectClass=* for Microsoft.  Default: ObjectClass=*)\n"
+    "--protocol <l>:      Protocol (Default: LDAP_VERSION3)\n" 
+    "--scope <s>:         Scope (Default: LDAP_SCOPE_SUBTREE)\n"
+    "--dn <d>:            Distinguished Name (No default.  Example: joeschmoe@github.com)\n"
+    "--password <a>:      Password (No default)\n"
     "--help <h>:          Show help\n"
   );
   exit(1);
