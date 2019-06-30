@@ -34,21 +34,26 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <regex.h>     
+#include <pthread.h>
 
-const char* hostname;
-int port;
+// const char* hostname;
+// int port;
+
 unsigned long hostaddr;
 int sock;
-struct sockaddr_in sin;
+struct sockaddr_in sin, client;
 struct hostent* hp;
+int socket_opt, client_sock, c, *new_sock;
 
 regex_t ip_regex;
 int reti;
 
-int connectImpl();
+int createSocket(const char*, int);
 
-int createSocket();
+int connectSocket();
 
 void closeSocket();
+
+void *connection_handler(void *socket_desc);
 
 #endif

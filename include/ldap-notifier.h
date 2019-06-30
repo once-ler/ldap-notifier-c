@@ -1,7 +1,7 @@
 #ifndef LDAP_NOTIFIER
 #define LDAP_NOTIFIER
 
-#define LDAP_NOTIFIER_VERSION "0.1.2"
+#define LDAP_NOTIFIER_VERSION "0.1.3"
 
 #define LDAP_SERVER_NOTIFICATION_OID_W  "1.2.840.113556.1.4.528"
 
@@ -33,14 +33,14 @@ struct LdapNotifier {
 };
 
 // Create a LDAP connection and set up preferences.
-int init(struct LdapNotifier*);
+int initNotifier(struct LdapNotifier*);
 
 // Bind to the LDAP server.
-int bind(struct LdapNotifier*);
+int bindToLDAP(struct LdapNotifier*);
 
 //  Set up the control to search the directory for objects that have 
 //  changed from a previous state.
-int search(struct LdapNotifier*, char* []);
+int searchLDAP(struct LdapNotifier*, char* []);
 
 // Handler that receives the parsed BerElement in JSON format.
 typedef void (*LdapNotifierDataHandler) (const char* message);
@@ -51,6 +51,6 @@ typedef void (*LdapNotifierErrorHandler) (const char* message);
 // extern  LdapNotifierErrorHandler handleError(const char* message, LdapNotifierErrorHandler handler);
 
 // Asynchronously capture a message indicating a change.
-void listen(struct LdapNotifier*, LdapNotifierDataHandler*, LdapNotifierErrorHandler*);
+void listenToLDAP(struct LdapNotifier*, LdapNotifierDataHandler*, LdapNotifierErrorHandler*);
 
 #endif

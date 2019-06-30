@@ -13,7 +13,7 @@ static inline int is_ascii_string (char *blob, int len) {
   return 1;
 }
 
-int init(struct LdapNotifier* ldapNotifier) {
+int initNotifier(struct LdapNotifier* ldapNotifier) {
   if ((ldapNotifier->cnx = ldap_init(ldapNotifier->hostname, ldapNotifier->port)) == NULL) {
     perror( "ldap_init failed" );
     exit(1);
@@ -35,7 +35,7 @@ int init(struct LdapNotifier* ldapNotifier) {
   return ldapNotifier->ret;
 }
 
-int bind(struct LdapNotifier* ldapNotifier) {
+int bindToLDAP(struct LdapNotifier* ldapNotifier) {
   ldapNotifier->ret = ldap_simple_bind_s(ldapNotifier->cnx, ldapNotifier->ldap_dn, ldapNotifier->ldap_pw );
 
   if (ldapNotifier->ret != LDAP_SUCCESS) {
@@ -48,7 +48,7 @@ int bind(struct LdapNotifier* ldapNotifier) {
   return ldapNotifier->ret;
 }
 
-int search(struct LdapNotifier* ldapNotifier, char* attrs[]) {
+int searchLDAP(struct LdapNotifier* ldapNotifier, char* attrs[]) {
   //  Set up the control to search the directory for objects that have 
   //  changed from a previous state.
   ldapNotifier->notifyControl.ldctl_oid = LDAP_SERVER_NOTIFICATION_OID_W;
@@ -90,7 +90,7 @@ int search(struct LdapNotifier* ldapNotifier, char* attrs[]) {
   return ldapNotifier->ret;
 }
 
-void listen(struct LdapNotifier* ldapNotifier, LdapNotifierDataHandler* on_data, LdapNotifierErrorHandler* on_error) {
+void listenToLDAP(struct LdapNotifier* ldapNotifier, LdapNotifierDataHandler* on_data, LdapNotifierErrorHandler* on_error) {
   ldapNotifier->timeout.tv_sec  = 1;
   ldapNotifier->timeout.tv_usec = 0;
   ldapNotifier->entries = NULL;

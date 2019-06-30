@@ -1,11 +1,13 @@
 #include <getopt.h>
 #include "ldap-notifier.h"
+#include "simple-socket.h"
 
-const char *host = "localhost", *base, *filter = "objectClass=*", *dn, *password;
+const char *notifier_host = "localhost", *host = "localhost", *base, *filter = "objectClass=*", *dn, *password;
 int notifier_port = 7676, port = 389, protocol = LDAP_VERSION3, scope = LDAP_SCOPE_SUBTREE;
 
 void printHelp() {
   printf(
+    "--notifier-host <m>: Address used by notifier (Default: localhost)\n"
     "--notifier-port <n>: Port used by notifier (Default: 7676)\n" 
     "--host <t>:          Host name (Default: localhost)\n"
     "--port <p>:          Port (Default: 389)\n"
@@ -24,6 +26,7 @@ void parseArgs(int argc, char *argv[]) {
   const char* const short_opts = "s:e:p:c:t:h";
   
   const char* long_opts[] = {
+    {"notifier-host", required_argument, NULL, 'm'},
     {"notifier-port", required_argument, NULL, 'n'},
     {"host", required_argument, NULL, 'h'},
     {"port", required_argument, NULL, 'p'},
@@ -38,12 +41,16 @@ void parseArgs(int argc, char *argv[]) {
   };
   
   while (1) {
-    const auto opt = getopt_long(argc, argv, short_opts, long_opts, NULL);
+    const int opt = getopt_long(argc, argv, short_opts, long_opts, NULL);
 
     if (-1 == opt)
       break;
 
     switch (opt) {
+      case 'm':
+        notifier_host = optarg;
+        break;
+
       case 'n':
         notifier_port = atoi(optarg);
         break;
@@ -89,7 +96,8 @@ void parseArgs(int argc, char *argv[]) {
   }
   
   fprintf(stdout, 
-    "Notifier set to %d\n"
+    "Notifier host set to %s\n"
+    "Notifier port set to %d\n"
     "Host set to %s\n"
     "Port set to %d\n"
     "Base set to %s\n"
@@ -98,6 +106,7 @@ void parseArgs(int argc, char *argv[]) {
     "Scope set to %d\n"
     "DN set to %s\n"
     "Password set to %s\n",
+    notifier_host,
     notifier_port,
     host,
     port,
@@ -113,4 +122,8 @@ void parseArgs(int argc, char *argv[]) {
 
 int main(int argc, const char* argv[]) {
   parseArgs(argc, argv);
+
+  createSocket(notifier_host, notifier_port);
+
+  return 0;
 }
