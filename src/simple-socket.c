@@ -22,6 +22,17 @@ void closeSocket() {
 void *connection_handler(void *socket_desc) {
   //Get the socket descriptor
   int sock = *(int*)socket_desc;
+  char *message , client_message[2000];
+    
+  while (1) {
+    message = "Greetings! I am your connection handler\n";
+    write(sock , message , strlen(message));
+      
+    message = "Spinning... \n";
+    write(sock , message , strlen(message));
+
+    sleep(1);
+  }
 }
 
 int createSocket(const char* hostname, int port) {
@@ -92,14 +103,11 @@ int createSocket(const char* hostname, int port) {
       puts("Connection accepted");
 
       pthread_t sniffer_thread;
-      new_sock = (int*) malloc(1);
-      *new_sock = client_sock;
-
-      if( pthread_create( &sniffer_thread, NULL, connection_handler, (void*) new_sock) < 0) {
-          //ERROR
+      
+      if( pthread_create( &sniffer_thread, NULL, connection_handler, (void*) &client_sock) < 0) {
+        //ERROR
+        puts("Allocation error");
       }
-
-      printf("Handler assigned");
   }
 
   if (client_sock < 0) {
