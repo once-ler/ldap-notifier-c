@@ -1,5 +1,5 @@
 #include "simple-socket.h"
-
+#include "queue.h"
 /*
 int connectSocket() {
   if (connect(sock, (struct sockaddr*)(&sin),
@@ -10,6 +10,69 @@ int connectSocket() {
   return 0;
 }
 */
+
+TAILQ_HEAD(tailhead, client) head;
+struct tailhead* headp; /* Tail queue head. */
+
+struct client {
+	/* The clients socket. */
+	int fd;
+
+	/*
+	 * This holds the pointers to the next and previous entries in
+	 * the tail queue.
+	 */
+	TAILQ_ENTRY(client) entries;
+};
+
+
+/*
+  Function used by ldap notifier to stream updates to.
+*/
+void broadcast() {
+  for (;;) {
+    // Send data to all connected clients.
+    char *message;
+    struct client* item = TAILQ_FIRST(&head);
+    TAILQ_FOREACH(item, &head, entries) {
+      int sock = item->fd;
+      // bufferevent_write(client->buf_ev, data,  n);
+      message = "Greetings! I am your connection handler\n";
+      write(sock , message , strlen(message));
+        
+      message = "Spinning... \n";
+      write(sock , message , strlen(message));
+
+    }
+
+    sleep(1);
+  }
+}
+
+/*
+void on_client_disconnect() {
+  // Remove the client from the tailq. //
+	TAILQ_REMOVE(&client_tailq_head, client, entries);
+}
+*/
+
+/**
+ * Set a socket to non-blocking mode.
+ * Not working for this setup.
+ */
+int
+setnonblock(int fd) {
+	int flags;
+
+	flags = fcntl(fd, F_GETFL);
+	if (flags < 0)
+		return flags;
+	flags |= O_NONBLOCK;
+	if (fcntl(fd, F_SETFL, flags) < 0)
+		return -1;
+
+	return 0;
+}
 
 void closeSocket() {
   #ifdef _WIN32
@@ -22,17 +85,16 @@ void closeSocket() {
 void *connection_handler(void *socket_desc) {
   //Get the socket descriptor
   int sock = *(int*)socket_desc;
-  char *message , client_message[2000];
-    
-  while (1) {
-    message = "Greetings! I am your connection handler\n";
-    write(sock , message , strlen(message));
-      
-    message = "Spinning... \n";
-    write(sock , message , strlen(message));
 
-    sleep(1);
-  }
+  struct client* cl;
+  cl = malloc(sizeof(struct client));
+  if (cl == NULL)
+    err(1, "malloc failed");
+
+  cl->fd = sock;
+
+  /* Add the new client to the tailq. */
+  TAILQ_INSERT_TAIL(&head, cl, entries);  
 }
 
 int createSocket(const char* hostname, int port) {
@@ -93,12 +155,19 @@ int createSocket(const char* hostname, int port) {
   if (listen(sock, 5) < 0) { 
       perror("Call to listen socket failed.\n"); 
       exit(1); 
-  } 
+  }
+
+  TAILQ_INIT(&head);                      /* Initialize the queue. */
+  struct client* n1 = malloc(sizeof(struct client));      /* Insert at the head. */
+  TAILQ_INSERT_HEAD(&head, n1, entries);
   
   fprintf(stdout, "Listening on address %s and port %d\n", hostname, port);
 
   c = sizeof(struct sockaddr_in);
 
+  pthread_t broadcast_thread;
+  pthread_create( &broadcast_thread, NULL, broadcast, NULL);
+  
   while( (client_sock = accept(sock, (struct sockaddr *)&client, (socklen_t*)&c)) ) {
       puts("Connection accepted");
 
