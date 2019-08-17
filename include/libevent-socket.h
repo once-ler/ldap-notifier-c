@@ -57,7 +57,7 @@ static struct event_base *evbase;
 
 unsigned long hostaddr;
 int sock;
-struct sockaddr_in sin, client;
+struct sockaddr_in client;
 struct hostent* hp;
 int socket_opt, client_sock, c, *new_sock;
 

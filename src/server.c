@@ -1,7 +1,21 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <getopt.h>
 #include "ldap-notifier.h"
 // #include "simple-socket.h"
+// #include "libevent-socket.h"
+
+#define SIMPLE SIMPLE
+#define EVENT EVENT
+
+#ifdef USE_SOCKET
+#if USE_SOCKET == SIMPLE
+#include "simple-socket.h"
+#else
 #include "libevent-socket.h"
+#endif
+#endif
 
 const char *notifier_host = "localhost", *host = "localhost", *base, *filter = "objectClass=*", *dn, *password;
 int notifier_port = 7676, port = 389, protocol = LDAP_VERSION3, scope = LDAP_SCOPE_SUBTREE;
@@ -23,7 +37,7 @@ void printHelp() {
   exit(1);
 }
 
-void parseArgs(int argc, char *argv[]) {
+void parseArgs(int argc, const char *argv[]) {
   const char* const short_opts = "s:e:p:c:t:h";
   
   const char* long_opts[] = {

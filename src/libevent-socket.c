@@ -1,28 +1,5 @@
 #include "libevent-socket.h"
-#include "queue.h"
-
-TAILQ_HEAD(tailhead, client) head;
-struct tailhead* headp; /* Tail queue head. */
-
-struct client {
-	/* The clients socket. */
-	int fd;
-
-	/* The bufferedevent for this client. */
-	struct bufferevent *buf_ev;
-
-	/*
-	 * This holds the pointers to the next and previous entries in
-	 * the tail queue.
-	 */
-	TAILQ_ENTRY(client) entries;
-};
-
-/**
- * The head of our tailq of all connected clients.  This is what will
- * be iterated to send a received message to all connected clients.
- */
-TAILQ_HEAD(, client) client_tailq_head;
+#include "queue-supervisor.h"
 
 /**
  * Set a socket to non-blocking mode.
@@ -44,8 +21,8 @@ int setnonblock(int fd) {
  * Called by libevent when there is data to read.
  */
 void buffered_on_read(struct bufferevent *bev, void *arg) {
-	struct client *this_client = (struct client *) arg;
-	struct client *client;
+	// struct client *this_client = (struct client *) arg;
+	// struct client *client;
 	uint8_t data[8192];
 	size_t n;
 
@@ -56,14 +33,18 @@ void buffered_on_read(struct bufferevent *bev, void *arg) {
 			/* Done. */
 			break;
 		}
+
+		printf("%s", (char*)data);
 		
-		/* Send data to all connected clients except for the
-		 * client that sent the data. */
+		// Send data to all connected clients except for the
+		// client that sent the data.
+		/*
 		TAILQ_FOREACH(client, &client_tailq_head, entries) {
 			if (client != this_client) {
 				bufferevent_write(client->buf_ev, data,  n);
 			}
 		}
+		*/
 	}
 
 }
@@ -85,7 +66,7 @@ void buffered_on_error(struct bufferevent *bev, short what, void *arg) {
 	}
 
 	/* Remove the client from the tailq. */
-	TAILQ_REMOVE(&client_tailq_head, client, entries);
+	remove_from_queue(client);
 
 	bufferevent_free(client->buf_ev);
 	close(client->fd);
@@ -119,15 +100,21 @@ void on_accept(int fd, short ev, void *arg) {
 	client->fd = client_fd;
 
 	client->buf_ev = bufferevent_socket_new(evbase, client_fd, 0);
-	bufferevent_setcb(client->buf_ev, buffered_on_read, NULL,
-	    buffered_on_error, client);
+	
+	bufferevent_setcb(
+		client->buf_ev, 
+		buffered_on_read, 
+		NULL,
+	  buffered_on_error,
+		client
+	);
 
 	/* We have to enable it before our callbacks will be
 	 * called. */
 	bufferevent_enable(client->buf_ev, EV_READ);
 
 	/* Add the new client to the tailq. */
-	TAILQ_INSERT_TAIL(&client_tailq_head, client, entries);
+	add_to_queue(client);
 
 	printf("Accepted connection from %s\n", 
 	    inet_ntoa(client_addr.sin_addr));
@@ -141,21 +128,6 @@ void closeSocket() {
   #endif
 }
 
-void *connection_handler(void *socket_desc) {
-  //Get the socket descriptor
-  int sock = *(int*)socket_desc;
-
-  struct client* cl;
-  cl = malloc(sizeof(struct client));
-  if (cl == NULL)
-    err(1, "malloc failed");
-
-  cl->fd = sock;
-
-  /* Add the new client to the tailq. */
-  TAILQ_INSERT_TAIL(&head, cl, entries);  
-}
-
 int createSocket(const char* hostname, int port) {
   reti = regcomp(&ip_regex, IP_ADDR_REGEX, 0);
   if (reti) {
@@ -163,25 +135,26 @@ int createSocket(const char* hostname, int port) {
     exit(1);
   }
 
+	pthread_t broadcast_thread;
+  pthread_create( &broadcast_thread, NULL, (void*) broadcast, NULL);
+  
 	/* Initialize libevent. */
   evbase = event_base_new();
 
 	/* Initialize the tailq. */
-	TAILQ_INIT(&client_tailq_head);
-  
+	init_queue();
+
   // if ip address was passed in
   reti = regexec(&ip_regex, hostname, 0, NULL, 0);
   
   /* Create our listening socket. */
-	// listen_fd == sock
-  listen_fd = socket(AF_INET, SOCK_STREAM, 0);
+	listen_fd = socket(AF_INET, SOCK_STREAM, 0);
 	if (listen_fd < 0)
 		err(1, "listen failed");
   
-  // listen_addr == sin
-	memset(&listen_addr, 0, sizeof(listen_addr));
+  memset(&listen_addr, 0, sizeof(listen_addr));
 	listen_addr.sin_family = AF_INET;
-	// listen_addr.sin_addr.s_addr = INADDR_ANY;
+	
 	if (!reti) {
     hostaddr = inet_addr(hostname);
     listen_addr.sin_addr.s_addr = hostaddr;

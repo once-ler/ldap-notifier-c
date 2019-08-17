@@ -1,77 +1,5 @@
 #include "simple-socket.h"
-#include "queue.h"
-/*
-int connectSocket() {
-  if (connect(sock, (struct sockaddr*)(&sin),
-    sizeof(struct sockaddr_in)) != 0) {
-    fprintf(stderr, "Failed to connect!\n");
-    return 1;
-  }
-  return 0;
-}
-*/
-
-TAILQ_HEAD(tailhead, client) head;
-struct tailhead* headp; /* Tail queue head. */
-
-struct client {
-	/* The clients socket. */
-	int fd;
-
-	/*
-	 * This holds the pointers to the next and previous entries in
-	 * the tail queue.
-	 */
-	TAILQ_ENTRY(client) entries;
-};
-
-
-/*
-  Function used by ldap notifier to stream updates to.
-*/
-void broadcast() {
-  for (;;) {
-    // Send data to all connected clients.
-    char *message;
-    struct client* item = TAILQ_FIRST(&head);
-    TAILQ_FOREACH(item, &head, entries) {
-      int sock = item->fd;
-      // bufferevent_write(client->buf_ev, data,  n);
-      message = "Greetings! I am your connection handler\n";
-      write(sock , message , strlen(message));
-        
-      message = "Spinning... \n";
-      write(sock , message , strlen(message));
-
-    }
-
-    sleep(1);
-  }
-}
-
-/*
-void on_client_disconnect() {
-  // Remove the client from the tailq. //
-	TAILQ_REMOVE(&client_tailq_head, client, entries);
-}
-*/
-
-/**
- * Set a socket to non-blocking mode.
- * Not working for this setup.
- */
-int setnonblock(int fd) {
-	int flags;
-
-	flags = fcntl(fd, F_GETFL);
-	if (flags < 0)
-		return flags;
-	flags |= O_NONBLOCK;
-	if (fcntl(fd, F_SETFL, flags) < 0)
-		return -1;
-
-	return 0;
-}
+#include "queue-supervisor.h"
 
 void closeSocket() {
   #ifdef _WIN32
@@ -81,7 +9,7 @@ void closeSocket() {
   #endif
 }
 
-void *connection_handler(void *socket_desc) {
+void* connection_handler(void *socket_desc) {
   //Get the socket descriptor
   int sock = *(int*)socket_desc;
 
@@ -93,7 +21,45 @@ void *connection_handler(void *socket_desc) {
   cl->fd = sock;
 
   /* Add the new client to the tailq. */
-  TAILQ_INSERT_TAIL(&head, cl, entries);  
+  add_to_queue(cl);
+
+  // Continuously detect the client connection.
+  fd_set read_sd;
+  FD_ZERO(&read_sd);
+  FD_SET(sock, &read_sd);
+
+  while (1) {
+    fd_set rsd = read_sd;
+
+    int sel = select(sock + 1, &rsd, 0, 0, 0);
+
+    if (sel > 0) {
+      // client has performed some activity (sent data or disconnected?)
+      char buf[1024] = {0};
+
+      int bytes = recv(sock, buf, sizeof(buf), 0);
+
+      if (bytes > 0) {
+        // got data from the client.
+      } else if (bytes == 0) {
+        // client disconnected.
+        break;
+      } else {
+        // error receiving data from client. You may want to break from
+        // while-loop here as well.
+        break;
+      }
+    } else if (sel < 0) {
+      // grave error occurred.
+      break;
+    }
+  }
+
+  close(sock);
+  fprintf(stdout, "Client %d disconnected\n", cl->fd);
+
+  // Remove the client from the tailq. //
+	remove_from_queue(cl);
 }
 
 int createSocket(const char* hostname, int port) {
@@ -155,31 +121,30 @@ int createSocket(const char* hostname, int port) {
       perror("Call to listen socket failed.\n"); 
       exit(1); 
   }
-
-  TAILQ_INIT(&head);                      /* Initialize the queue. */
-  struct client* n1 = malloc(sizeof(struct client));      /* Insert at the head. */
-  TAILQ_INSERT_HEAD(&head, n1, entries);
   
+  init_queue();
+
   fprintf(stdout, "Listening on address %s and port %d\n", hostname, port);
 
   c = sizeof(struct sockaddr_in);
 
   pthread_t broadcast_thread;
-  pthread_create( &broadcast_thread, NULL, broadcast, NULL);
+  pthread_create( &broadcast_thread, NULL, (void*) broadcast, NULL);
   
   while( (client_sock = accept(sock, (struct sockaddr *)&client, (socklen_t*)&c)) ) {
-      puts("Connection accepted");
+    puts("Connection accepted");
 
-      pthread_t sniffer_thread;
-      
-      if( pthread_create( &sniffer_thread, NULL, connection_handler, (void*) &client_sock) < 0) {
-        //ERROR
-        puts("Allocation error");
-      }
+    pthread_t sniffer_thread;
+    
+    if( pthread_create( &sniffer_thread, NULL, (void*) connection_handler, (void*) &client_sock) < 0) {
+      //ERROR
+      puts("Allocation error");
+    }
   }
 
   if (client_sock < 0) {
-      //ERROR
+    //ERROR
+    printf("Error\n");
   }
 
   return 0;
