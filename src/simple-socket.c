@@ -60,8 +60,7 @@ void on_client_disconnect() {
  * Set a socket to non-blocking mode.
  * Not working for this setup.
  */
-int
-setnonblock(int fd) {
+int setnonblock(int fd) {
 	int flags;
 
 	flags = fcntl(fd, F_GETFL);

@@ -7,13 +7,19 @@ gcc -g -Wall -I ./include -c src/ldap-notifier.c -shared -o build/libldap-notifi
 
 ```
 
-### Install server
+### Install server (using simple-socket)
 ```
-gcc -g -Wall -I ./include -c src/simple-socket.c -shared -o build/libsimple-socket.so
+  gcc -g -Wall -I ./include -c src/simple-socket.c -shared -o build/libsimple-socket.so
 ```
 
 ```
 gcc -g -Wall -I ./include src/server.c -o build/ldap-notifier-server -Lbuild -lsimple-socket   -lldap-notifier -lldap -llber -lcjson -lpthread
+
+```
+
+### Install server (using libevent)
+```
+gcc -g -Wall -I ./include src/server.c -o build/ldap-notifier-server -levent -lldap-notifier -lldap -llber -lcjson -lpthread
 
 ```
 

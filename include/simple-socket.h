@@ -36,9 +36,6 @@
 #include <regex.h>     
 #include <pthread.h>
 
-// const char* hostname;
-// int port;
-
 unsigned long hostaddr;
 int sock;
 struct sockaddr_in sin, client;

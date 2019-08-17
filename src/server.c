@@ -1,6 +1,7 @@
 #include <getopt.h>
 #include "ldap-notifier.h"
-#include "simple-socket.h"
+// #include "simple-socket.h"
+#include "libevent-socket.h"
 
 const char *notifier_host = "localhost", *host = "localhost", *base, *filter = "objectClass=*", *dn, *password;
 int notifier_port = 7676, port = 389, protocol = LDAP_VERSION3, scope = LDAP_SCOPE_SUBTREE;
